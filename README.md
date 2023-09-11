@@ -1,10 +1,10 @@
 # Power Noise Suite for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 
-<img title="Power Noise Suite" src="[https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/36762cec-750c-46bc-a7f1-9fbf5b0251e4](https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/9a0bd3d3-3363-4ec8-bca1-1be10e5272f4)" width="400">
+<img title="Power Noise Suite" src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/254600a1-1ae3-4560-99fb-b0ad6f36a713" width="400">
 
 Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustements. 
 
-<a href="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/377e9b88-98b4-4d4c-bb42-c5223a0e8bb5"><img src="[https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/377e9b88-98b4-4d4c-bb42-c5223a0e8bb5](https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/256e9199-e6e4-4527-abbf-641e3ab0be9c)" width="400"></a>
+<img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/23bb0f9b-4f63-41ea-961d-ac19e554feef" width="400">
 
 ---
 
