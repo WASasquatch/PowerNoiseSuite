@@ -1,6 +1,10 @@
 # Power Noise Suite for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 
+<img title="Power Noise Suite" src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/36762cec-750c-46bc-a7f1-9fbf5b0251e4" width="400">
+
 Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustements. 
+
+<a href="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/377e9b88-98b4-4d4c-bb42-c5223a0e8bb5"><img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/377e9b88-98b4-4d4c-bb42-c5223a0e8bb5" width="400"></a>
 
 ---
 
@@ -82,7 +86,7 @@ This node generates perlin power fractal noise
 
 ---
 
-# Power Law Noise Generator
+## Power Law Noise Generator
 
 This node generates Power-Law noise. Power law noise is a common form of noise used all over. For example, `vanilla_comfyui` mode is regular ComfyUI noise that is White Noise.
 
