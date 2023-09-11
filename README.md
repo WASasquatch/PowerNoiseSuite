@@ -27,6 +27,12 @@ Power Noise Suite contains nodes centered around latent noise input, and diffusi
    - [Cross-Hatch Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-settings-parameters)
 
 
+---
+
+# Nodes
+
+---
+
 ## **Perlin Power Fractal Noise** Parameters
 
 This node generates perlin power fractal noise
