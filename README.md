@@ -15,6 +15,18 @@ Power Noise Suite contains nodes centered around latent noise input, and diffusi
     
 ---
 
+# Nodage Menu
+ - [Perlin Power Fractal Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-noise-parameters)
+ - [Power Law Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-law-noise-parameters)
+ - [Cross-Hatch Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-parameters)
+ - [Blend Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#blend-latents-parameters)
+ - [Image as Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#images-as-latents-parameters)
+ - [Latent Adjustment](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#latent-adjustment-parameters)
+ - [Power KSampler Advanced](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-ksampler-advanced-parameters)
+   - [Perlin Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-settings-parameters)
+   - [Cross-Hatch Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-settings-parameters)
+
+
 ## **Perlin Power Fractal Noise** Parameters
 
 This node generates perlin power fractal noise
@@ -86,7 +98,7 @@ This node generates perlin power fractal noise
 
 ---
 
-## Power Law Noise Generator
+## Power Law Noise Parameters
 
 This node generates Power-Law noise. Power law noise is a common form of noise used all over. For example, `vanilla_comfyui` mode is regular ComfyUI noise that is White Noise.
 
@@ -331,7 +343,7 @@ This node allows your to adjust the latents such as brightness, contrast, and sh
 
 ---
 
-## POWER KSAMPLER ADVANCED
+## **Power KSampler Advanced** Parameters
 
 The `PPFNKSamplerAdvanced` class is part of the Power Noise Suite and provides advanced capabilities for noise sampling. It is categorized under "Power Noise Suite/Sampling."
 
@@ -453,7 +465,7 @@ Define Perlin Power Fractal settings for Power KSampler Advanced
 
 ---
 
-# **Cross-Hatch Power Fractal Settings** Parameters
+## **Cross-Hatch Power Fractal Settings** Parameters
 
 Define Cross-Hatch Power Fractal settings for Power KSampler Adanced.
 
