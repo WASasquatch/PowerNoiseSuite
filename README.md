@@ -2,17 +2,15 @@
 
 <img title="Power Noise Suite" src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/254600a1-1ae3-4560-99fb-b0ad6f36a713" width="400">
 
-Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustments. 
+Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustments. This repo is the successor to [PPF_Noise_ComfyUI](https://github.com/WASasquatch/PPF_Noise_ComfyUI) 
 
 <img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/23bb0f9b-4f63-41ea-961d-ac19e554feef" width="400">
 
 ---
 
 # Installation
- - Clone the repo to `ComfyUI/custom_nodes`. Torch versions do not need requirements.txt installed.
-   - If you are using previous non-torch builds, run the requirements.txt against your ComfyUI Python Environment
-     - ***ComfyUI Standalone Portable example:*** `C:\ComfyUI_windows_portable\python_embeded\python.exe -s -m pip install -r "C:\ComfyUI_windows_portable\custom_nodes\PPF_Noise_ComfyUI\requirements.txt"`
-    
+ - Clone the repo to `ComfyUI/custom_nodes`.
+
 ---
 
 # Nodage Menu
