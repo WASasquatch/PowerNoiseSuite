@@ -31,8 +31,6 @@ Power Noise Suite contains nodes centered around latent noise input, and diffusi
 
 # Nodes
 
----
-
 ## **Perlin Power Fractal Noise** Parameters
 
 This node generates perlin power fractal noise
