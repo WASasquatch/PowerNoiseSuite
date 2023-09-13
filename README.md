@@ -371,6 +371,10 @@ The `PPFNKSamplerAdvanced` class is part of the Power Noise Suite and provides a
 
 - `noise_type`: ["white", "grey", "pink", "green", "blue", "mix"]: 
   - The type of [power-law noise](https://en.wikipedia.org/wiki/Colors_of_noise#Technical_definitions) to generate.
+- `noise_blending`: ["bislerp", "cosine interp", "cuberp", "hslerp", "lerp", "add", "inject"]
+  - The noise blending method used during sampling
+- `noise_mode`: ["additive", "subtractive"]
+  - The noise operation used on the Power noise added to base noise.
 - `frequency` (FLOAT): The frequency of the noise range.
     - Default: 3.141592653589793
     - Range: 0.001 to 1024.0

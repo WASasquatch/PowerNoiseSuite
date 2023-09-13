@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import math
 
 from .latent_util import normalize
     
@@ -14,9 +15,12 @@ def sharpen_latents(latent, alpha=1.5):
     Returns:
         torch.Tensor: The sharpened latent tensor.
     """
+    # Ensure that all operations are done on the input 'latent' device
+    device = latent.device
+    
     sharpen_kernel = torch.tensor([[-1, -1, -1],
                                    [-1,  9, -1],
-                                   [-1, -1, -1]], dtype=torch.float32)
+                                   [-1, -1, -1]], dtype=torch.float32, device=device)
     
     sharpen_kernel = sharpen_kernel.view(1, 1, 3, 3)
     sharpen_kernel /= sharpen_kernel.sum()
@@ -56,8 +60,6 @@ def high_pass_latents(latent, radius=3, strength=1.0):
     gaussian_kernel = torch.exp(-(x ** 2) / (2 * sigma ** 2))
     gaussian_kernel = gaussian_kernel / gaussian_kernel.sum()
 
-    padding_size = int((kernel_size - 1) // 2)
-
     high_pass_overlays = []
 
     for channel in range(latent.size(1)):
@@ -69,20 +71,20 @@ def high_pass_latents(latent, radius=3, strength=1.0):
         input_blur_h = F.conv2d(
             channel_tensor,
             weight_h,
-            padding=(0, padding_size),
+            padding=0,
         )
         input_blur_v = F.conv2d(
             input_blur_h,
             weight_v,
-            padding=(padding_size, 0),
+            padding=0,
         )
-        input_blur_h = F.interpolate(input_blur_h, size=(channel_tensor.size(2), channel_tensor.size(3)), mode='nearest')
-        input_blur_v = F.interpolate(input_blur_v, size=(channel_tensor.size(2), channel_tensor.size(3)), mode='nearest')
+
+        input_blur_h = F.interpolate(input_blur_h, size=channel_tensor.shape[-2:], mode='bilinear', align_corners=False)
+        input_blur_v = F.interpolate(input_blur_v, size=channel_tensor.shape[-2:], mode='bilinear', align_corners=False)
 
         high_pass_component = channel_tensor - input_blur_v
 
         high_pass_channel = channel_tensor + strength * high_pass_component
-        high_pass_channel = high_pass_channel[:, :, padding_size:-padding_size, padding_size:-padding_size]
         high_pass_channel = torch.clamp(high_pass_channel, 0, 1)
         
         high_pass_overlays.append(high_pass_channel)
@@ -90,6 +92,42 @@ def high_pass_latents(latent, radius=3, strength=1.0):
     high_pass_overlay = torch.cat(high_pass_overlays, dim=1)
 
     return high_pass_overlay
+
+def hslerp(a, b, t):
+    """
+    Perform Hybrid Spherical Linear Interpolation (HSLERP) between two tensors.
+
+    This function combines two input tensors `a` and `b` using HSLERP, which is a specialized
+    interpolation method for smooth transitions between orientations or colors.
+
+    Args:
+        a (tensor): The first input tensor.
+        b (tensor): The second input tensor.
+        t (float): The blending factor, a value between 0 and 1 that controls the interpolation.
+
+    Returns:
+        tensor: The result of HSLERP interpolation between `a` and `b`.
+
+    Note:
+        HSLERP provides smooth transitions between orientations or colors, particularly useful
+        in applications like image processing and 3D graphics.
+    """
+    if a.shape != b.shape:
+        raise ValueError("Input tensors a and b must have the same shape.")
+
+    num_channels = a.size(1)
+    
+    interpolation_tensor = torch.zeros(1, num_channels, 1, 1, device=a.device, dtype=a.dtype)
+    interpolation_tensor[0, 0, 0, 0] = 1.0
+
+    result = (1 - t) * a + t * b
+
+    if t < 0.5:
+        result += (torch.norm(b - a, dim=1, keepdim=True) / 6) * interpolation_tensor
+    else:
+        result -= (torch.norm(b - a, dim=1, keepdim=True) / 6) * interpolation_tensor
+
+    return result
 
 blending_modes = {
 
@@ -121,16 +159,7 @@ blending_modes = {
 
     # Interpolates between tensors a and b using normalized linear interpolation,
     # with a twist when t is greater than or equal to 0.5.
-    'hslerp': lambda a, b, t: (
-        (1 - t) * a + t * b + 
-        ((torch.norm(b - a, dim=1, keepdim=True) / 6) * torch.tensor([1.0, 0.0, 0.0], device=a.device, dtype=a.dtype)
-            .unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(a)) 
-        if t < 0.5 
-        else 
-        (1 - t) * a + t * b - 
-        ((torch.norm(b - a, dim=1, keepdim=True) / 6) * torch.tensor([1.0, 0.0, 0.0], device=a.device, dtype=a.dtype)
-            .unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(a))
-    ),
+    'hslerp': hslerp,
 
     # Simulates a glowing effect by applying a formula based on the input tensors a and b, scaled by t.
     'glow': lambda a, b, t: torch.where(a <= 1, a ** 2 / (1 - b + 1e-6), b * (a - 1) / (a + 1e-6)),
