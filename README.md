@@ -1,19 +1,33 @@
-# Power Noise Suite for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
+# **Power Noise Suite** for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 
-<img title="Power Noise Suite" src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/36762cec-750c-46bc-a7f1-9fbf5b0251e4" width="400">
+<img title="Power Noise Suite" src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/254600a1-1ae3-4560-99fb-b0ad6f36a713" width="400">
 
-Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustements. 
+Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustments. This repo is the successor to [PPF_Noise_ComfyUI](https://github.com/WASasquatch/PPF_Noise_ComfyUI) 
 
-<a href="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/377e9b88-98b4-4d4c-bb42-c5223a0e8bb5"><img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/377e9b88-98b4-4d4c-bb42-c5223a0e8bb5" width="400"></a>
+<img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/23bb0f9b-4f63-41ea-961d-ac19e554feef" width="400">
 
 ---
 
 # Installation
- - Clone the repo to `ComfyUI/custom_nodes`. Torch versions do not need requirements.txt installed.
-   - If you are using previous non-torch builds, run the requirements.txt against your ComfyUI Python Environment
-     - ***ComfyUI Standalone Portable example:*** `C:\ComfyUI_windows_portable\python_embeded\python.exe -s -m pip install -r "C:\ComfyUI_windows_portable\custom_nodes\PPF_Noise_ComfyUI\requirements.txt"`
-    
+ - Clone the repo to `ComfyUI/custom_nodes`.
+
 ---
+
+# Nodage Menu
+ - [Perlin Power Fractal Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-noise-parameters)
+ - [Power Law Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-law-noise-parameters)
+ - [Cross-Hatch Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-parameters)
+ - [Blend Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#blend-latents-parameters)
+ - [Image as Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#images-as-latents-parameters)
+ - [Latent Adjustment](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#latent-adjustment-parameters)
+ - [Power KSampler Advanced](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-ksampler-advanced-parameters)
+   - [Perlin Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-settings-parameters)
+   - [Cross-Hatch Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-settings-parameters)
+
+
+---
+
+# Nodes
 
 ## **Perlin Power Fractal Noise** Parameters
 
@@ -86,7 +100,7 @@ This node generates perlin power fractal noise
 
 ---
 
-## Power Law Noise Generator
+## Power Law Noise Parameters
 
 This node generates Power-Law noise. Power law noise is a common form of noise used all over. For example, `vanilla_comfyui` mode is regular ComfyUI noise that is White Noise.
 
@@ -331,7 +345,7 @@ This node allows your to adjust the latents such as brightness, contrast, and sh
 
 ---
 
-## POWER KSAMPLER ADVANCED
+## **Power KSampler Advanced** Parameters
 
 The `PPFNKSamplerAdvanced` class is part of the Power Noise Suite and provides advanced capabilities for noise sampling. It is categorized under "Power Noise Suite/Sampling."
 
@@ -369,7 +383,7 @@ The `PPFNKSamplerAdvanced` class is part of the Power Noise Suite and provides a
 
 ### Optional Inputs
 
-- `noise_type`: ["white", "grey", "pink", "green", "blue", "mix"]: 
+- `noise_type`: ["white", "grey", "pink", "green", "blue", "mix", "vanilla_comfy"]: 
   - The type of [power-law noise](https://en.wikipedia.org/wiki/Colors_of_noise#Technical_definitions) to generate.
 - `noise_blending`: ["bislerp", "cosine interp", "cuberp", "hslerp", "lerp", "add", "inject"]
   - The noise blending method used during sampling
@@ -457,7 +471,7 @@ Define Perlin Power Fractal settings for Power KSampler Advanced
 
 ---
 
-# **Cross-Hatch Power Fractal Settings** Parameters
+## **Cross-Hatch Power Fractal Settings** Parameters
 
 Define Cross-Hatch Power Fractal settings for Power KSampler Adanced.
 
