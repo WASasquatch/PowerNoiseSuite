@@ -691,7 +691,11 @@ class PPFNKSamplerAdvanced:
                     return tree
 
                 sigma_min = self.sigma_min
-                sigma_max = self.sigma_max / 2 # 14.614643096923828
+                sigma_max = self.sigma_max # 14.614643096923828
+                if isinstance(sigma_min, torch.Tensor) and sigma.numel() == 1:
+                    sigma_min = sigma_min.item()
+                if isinstance(sigma_max, torch.Tensor) and sigma.numel() == 1: 
+                    sigma_max = (sigma_max / 2).item()
                 if isinstance(sigma, torch.Tensor) and sigma.numel() == 1:
                     sigma = sigma.item()
                 elif isinstance(sigma, float):
