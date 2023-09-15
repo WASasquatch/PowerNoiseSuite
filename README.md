@@ -17,6 +17,7 @@ Power Noise Suite contains nodes centered around latent noise input, and diffusi
  - [Perlin Power Fractal Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-noise-parameters)
  - [Power Law Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-law-noise-parameters)
  - [Cross-Hatch Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-parameters)
+ - [Cross-Hatch Linear Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-linear-power-fractal-parameters)
  - [Blend Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#blend-latents-parameters)
  - [Image as Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#images-as-latents-parameters)
  - [Latent Adjustment](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#latent-adjustment-parameters)
@@ -204,6 +205,72 @@ This node generates a batch of cross-hatch power fractal noise patterns.
 ### Optional:
 
 - `optional_vae` (VAE, optional): The optional VAE for encoding the noise.
+
+### Returns
+- `latents` (LATENT): The latent image result
+- `previews` (IMAGE): The noise as tensor images.
+
+---
+
+## **Cross-Hatch Linear Power Fractal** Parameters
+
+This node generates a batch of *linear* cross-hatch power fractal noise patterns.
+
+### Required Parameters:
+
+- `batch_size` (INT): The number of images to generate in the batch.
+    - Range: [1, 64]
+    - Default: 1
+- `width` (INT): The width of each image in pixels.
+    - Range: [64, 8192]
+    - Default: 512
+- `height` (INT): The height of each image in pixels.
+    - Range: [64, 8192]
+    - Default: 512
+- `resampling` (STRING): The resampling method used for scaling noise to the latent size. Choose from the following options:
+    - "**nearest-exact**": Nearest-Exact Resampling.
+    - "**bilinear**": Bilinear Resampling.
+    - "**area**": Area Resampling (Antialiasing).
+    - "**bicubic**": Bicubic Resampling.
+    - "**bislerp**": Bislerp Resampling (Bilinear Sinc Interpolation).
+- `frequency` (FLOAT): The frequency parameter for fractal generation. It determines the frequency of the cross-hatch pattern.
+    - Range: [0.001, 1024.0]
+    - Default: 320.0
+- `gain` (FLOAT): The gain factor for controlling the amplitude of the generated noise.
+    - Range: [0.0, 1.0]
+    - Default: 0.25
+- `octaves` (INT): The number of octaves for fractal generation. It controls the level of detail and complexity in the output.
+    - Range: [1, 32]
+    - Default: 12
+- `persistence` (FLOAT): The persistence parameter for fractal generation. It determines the amplitude decrease of each octave.
+    - Range: [0.001, 2.0]
+    - Default: 1.5
+- `add_noise` (FLOAT): The tolerance parameter for adding random noise to the generated pattern. It affects the variety of colors in the output.
+    - Range: [0.0, 1.0]
+    - Default: 0.0
+- `linear_range` (INT): The range for mapping noise values to different levels.
+    - Range: [2, 256]
+    - Default: 16
+- `linear_tolerance` (FLOAT): The tolerance parameter for color mapping.
+    - Range: [0.001, 1.0]
+    - Default: 0.05
+- `angle_degrees` (FLOAT): The angle in degrees for the cross-hatch pattern.
+    - Range: [0.0, 360.0]
+    - Default: 45.0
+- `brightness` (FLOAT): Adjusts the overall brightness of the generated noise.
+    - Range: [-1.0, 1.0]
+    - Default: 0.0
+- `contrast` (FLOAT): Adjusts the contrast of the generated noise.
+    - Range: [-1.0, 1.0]
+    - Default: 0.0
+- `seed` (INT): The seed for random number generation.
+    - Range: [0, 0xffffffffffffffff]
+    - Default: 0
+- `device` (STRING): Specify the device to generate noise on, either "cpu" or "cuda".
+
+### Optional Parameters:
+
+- `optional_vae` (VAE): The optional VAE for encoding the noise.
 
 ### Returns
 - `latents` (LATENT): The latent image result
