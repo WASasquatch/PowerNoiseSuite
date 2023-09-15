@@ -175,7 +175,7 @@ class PPFNPowerLawNoise:
         power_law = PowerLawNoise(device=device)
         tensors = power_law(batch_size, width, height, frequency=frequency, attenuation=attenuation, noise_type=noise_type, seed=seed)     
 
-        alpha_channel = torch.ones((batch_size, height, width, 1), dtype=tensors.dtype, device=device)
+        alpha_channel = torch.ones((batch_size, height, width, 1), dtype=tensors.dtype, device="cpu")
         tensors = torch.cat((tensors, alpha_channel), dim=3)
             
         if optional_vae is None:
@@ -713,13 +713,13 @@ class PPFNKSamplerAdvanced:
 
                 if not ppfs and not chs:
                     power_law = PowerLawNoise(device=tree.device)
-                    noise = power_law(1, self.width, self.height, noise_type=self.method, frequency=self.freq, attenuation=self.atten, seed=seed)
+                    noise = power_law(1, self.width, self.height, noise_type=self.method, frequency=self.freq, attenuation=self.atten, seed=seed).to(device=tree.device)
                 elif ppfs:
                     power_fractal = PPFNoiseNode()
                     noise = power_fractal.power_fractal_latent(1, self.width, self.height, 'nearest', ppfs['X'], ppfs['Y'], ppfs['Z'], ppfs['evolution'], ppfs['frame'], ppfs['scale'], ppfs['octaves'], ppfs['persistence'], ppfs['lacunarity'], ppfs['exponent'], ppfs['brightness'], ppfs['contrast'], 0.0, 1.0, seed, device=('cuda' if torch.cuda.is_available() else 'cpu'), optional_vae=None)[0]['samples'].to(device=tree.device)
                 elif chs:
                     ch_fractal = PPFNCrossHatchNode()
-                    noise = ch_fractal.cross_hatch(1, self.width, self.height, 'nearest', chs['frequency'], chs['octaves'], chs['persistence'], chs['color_tolerance'], chs['num_colors'], chs['angle_degrees'], chs['brightness'], chs['contrast'], chs['blur'], 0.0, 1.0, seed, device=('cuda' if torch.cuda.is_available() else 'cpu'), optional_vae=None)[0]['samples'].to(device=tree.device)
+                    noise = ch_fractal.cross_hatch(1, self.width, self.height, 'nearest', chs['frequency'], chs['octaves'], chs['persistence'], chs['color_tolerance'], chs['num_colors'], chs['angle_degrees'], chs['brightness'], chs['contrast'], chs['blur'], 0.0, 1.0, seed, device=('cuda' if torch.cuda.is_available() else 'cpu'), optional_vae=None)[0]['samples'].to(device=tree.device).to(device=tree.device)
                     
                 noise = noise_sigma_scale(noise, self.sigma_min, self.sigma_max)
                 
@@ -732,13 +732,16 @@ class PPFNKSamplerAdvanced:
                     noise = torch.cat((noise, alpha), dim=1)
 
                 if self.blend_type == "additive":
-                    blended_noise = tree + 0.025 * (blending_modes[self.blending_mode](tree.to(device=tree.device), sharpen_latents(noise.to(device=tree.device), 1.5), scaled_sigma) - tree)
+                    blended_noise = tree + 0.025 * (blending_modes[self.blending_mode](tree.to(device=tree.device), sharpen_latents(noise.to(device=tree.device), 0.5), scaled_sigma) - tree)
                 else:
-                    blended_noise = tree - 0.025 * (blending_modes[self.blending_mode](tree.to(device=tree.device), sharpen_latents(noise.to(device=tree.device), 1.5), scaled_sigma) - tree)
+                    blended_noise = tree - 0.025 * (blending_modes[self.blending_mode](tree.to(device=tree.device), sharpen_latents(noise.to(device=tree.device), ), scaled_sigma) - tree)
 
                 self.noise_idx[0] += 1
 
                 return blended_noise
+
+        dns = None
+        btns = None
 
         force_full_denoise = True
         if return_with_leftover_noise == "enable":
@@ -759,15 +762,18 @@ class PPFNKSamplerAdvanced:
             result = nodes.common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)
         except comfy.model_management.InterruptProcessingException as e:
             if noise_type != "vanilla_comfy":
-                print("Restoring ComfyUI Noise Samplers.")
-                comfy.k_diffusion.sampling.default_noise_sampler = dns
-                comfy.k_diffusion.sampling.BrownianTreeNoiseSampler = btns
+                if dns and btns:
+                    print("Restoring ComfyUI Noise Samplers.")
+                    comfy.k_diffusion.sampling.default_noise_sampler = dns
+                    comfy.k_diffusion.sampling.BrownianTreeNoiseSampler = btns
             raise e
             
-        if noise_type != "vanilla_comfy":
+        if noise_type != "vanilla_comfy" and not disable_noise:
             print("\nRestoring ComfyUI Noise Samplers")
-            comfy.k_diffusion.sampling.default_noise_sampler = dns
-            comfy.k_diffusion.sampling.BrownianTreeNoiseSampler = btns
+            if dns:
+                comfy.k_diffusion.sampling.default_noise_sampler = dns
+            if btns:
+                comfy.k_diffusion.sampling.BrownianTreeNoiseSampler = btns
         
         return result
 

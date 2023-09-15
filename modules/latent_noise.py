@@ -809,4 +809,4 @@ class PowerLawNoise(nn.Module):
         noise_image = (noise_image - noise_image.min()) / (noise_image.max() - noise_image.min())
         noise_image = noise_image.permute(0, 2, 3, 1).float()
 
-        return noise_image
+        return noise_image.to(device="cpu")
