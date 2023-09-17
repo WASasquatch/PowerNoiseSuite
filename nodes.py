@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import torchsde
 import math
+import sys
 
 import nodes
 import comfy.samplers
@@ -154,8 +155,9 @@ class PPFNPowerLawNoise:
                 "height": ("INT", {"default": 512, "max": 8192, "min": 64, "step": 1}),
                 "resampling": (["nearest-exact", "bilinear", "area", "bicubic", "bislerp"],),
                 "noise_type": (pln.get_noise_types(),),
-                "frequency": ("FLOAT", {"default": 64, "max": 1024.0, "min": 0.001, "step": 0.001}),
-                "attenuation": ("FLOAT", {"default": 1.0, "max": 1024.0, "min": 0.001, "step": 0.001}),
+                "scale": ("FLOAT", {"default": 1.0, "max": 1024.0, "min": 0.01, "step": 0.001}),
+                "alpha_exponent": ("FLOAT", {"default": 1.0, "max": 12.0, "min": -12.0, "step": 0.001}),
+                "modulator": ("FLOAT", {"default": 1.0, "max": 2.0, "min": 0.1, "step": 0.01}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}), 
                 "device": (["cpu", "cuda"],),
             },
@@ -170,10 +172,10 @@ class PPFNPowerLawNoise:
     
     CATEGORY = "Power Noise Suite/Noise"
     
-    def power_noise(self, batch_size, width, height, resampling, noise_type, frequency, attenuation, seed, device, optional_vae=None):
+    def power_noise(self, batch_size, width, height, resampling, noise_type, scale, alpha_exponent, modulator, seed, device, optional_vae=None):
     
         power_law = PowerLawNoise(device=device)
-        tensors = power_law(batch_size, width, height, frequency=frequency, attenuation=attenuation, noise_type=noise_type, seed=seed)     
+        tensors = power_law(batch_size, width, height, scale=scale, alpha=alpha_exponent, modulator=modulator, noise_type=noise_type, seed=seed)     
 
         alpha_channel = torch.ones((batch_size, height, width, 1), dtype=tensors.dtype, device="cpu")
         tensors = torch.cat((tensors, alpha_channel), dim=3)
@@ -540,10 +542,9 @@ class PPFNLatentAdjustment:
 class PPFNKSamplerAdvanced:
     @classmethod
     def INPUT_TYPES(s):
-        pln = PowerLawNoise('cpu')
-        noise_types = pln.get_noise_types()
+        noise_types = PowerLawNoise.get_noise_types()
         noise_types.append('vanilla_comfy')
-        samplers = ['dpmpp_sde', 'dpmpp_sde_gpu', 'dpmpp_2m', 'dpmpp_2m_sde', 'dpmpp_2m_sde_gpu', 'dpmpp_3m_sde', 'dpmpp_3m_sde_gpu', 'euler_ancestral', 'dpm_2_ancestral', 'dpmpp_2s_ancestral', 'dpm_fast', 'dpm_adaptive']
+        samplers = ['dpmpp_sde', 'dpmpp_sde_gpu', 'dpmpp_2m_sde', 'dpmpp_2m_sde_gpu', 'dpmpp_3m_sde', 'dpmpp_3m_sde_gpu', 'euler_ancestral', 'dpm_2_ancestral', 'dpmpp_2s_ancestral', 'dpm_fast', 'dpm_adaptive']
         return {
             "required": {
                 "model": ("MODEL",),
@@ -564,8 +565,9 @@ class PPFNKSamplerAdvanced:
                 "noise_type": (noise_types,),
                 "noise_blending": (["bislerp", "cosine interp", "cuberp", "hslerp", "lerp", "add", "inject"],),
                 "noise_mode": (["additive", "subtractive"],),
-                "frequency": ("FLOAT", {"default": 64, "max": 1024.0, "min": 0.001, "step": 0.001}),
-                "attenuation": ("FLOAT", {"default": 0.75, "max": 1024.0, "min": 0.001, "step": 0.001}),
+                "scale": ("FLOAT", {"default": 1.0, "max": sys.maxsize-1, "min": -(sys.maxsize-1), "step": 0.001}),
+                "alpha_exponent": ("FLOAT", {"default": 1.0, "max": 12.0, "min": -12.0, "step": 0.001}),
+                "modulator": ("FLOAT", {"default": 1.0, "max": 2.0, "min": 0.1, "step": 0.01}),
                 "sigma_tolerance": ("FLOAT", {"default": 0.5, "max": 1.0, "min": 0.0, "step": 0.001}),
                 "boost_leading_sigma": (["false", "true"],),
                 "ppf_settings": ("PPF_SETTINGS",),
@@ -578,7 +580,7 @@ class PPFNKSamplerAdvanced:
 
     CATEGORY = "Power Noise Suite/Sampling"
 
-    def sample(self, model, add_noise, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, start_at_step, end_at_step, return_with_leftover_noise, denoise=1.0, noise_type='grey', noise_blending="bislerp", noise_mode="additive", frequency=11.6, attenuation=0.75, sigma_tolerance=1.0, boost_leading_sigma="false", ppf_settings=None, ch_settings=None):
+    def sample(self, model, add_noise, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, start_at_step, end_at_step, return_with_leftover_noise, denoise=1.0, noise_type='grey', noise_blending="bislerp", noise_mode="additive", scale=1.0, alpha_exponent=1.0, modulator=1.0, sigma_tolerance=1.0, boost_leading_sigma="false", ppf_settings=None, ch_settings=None):
         
         # WHITE-NOISE SAMPLER HIJACK
         
@@ -587,10 +589,11 @@ class PPFNKSamplerAdvanced:
             noise_idx = [0]
             height = int(x.shape[2] * 8)
             width = int(x.shape[3] * 8)
-            method = noise_type
-            freq = frequency
-            atten = attenuation
-            sigma_tol = sigma_tolerance
+            method = noise_type if noise_type in PowerLawNoise.get_noise_types() else PowerLawNoise.get_noise_types()[0]
+            alpha_exp = alpha_exponent if not math.isnan(alpha_exponent) else 1.0
+            range_scale = scale if not math.isnan(scale) else 1.0
+            modu = modulator if not math.isnan(modulator) else 1.0
+            sigma_tol = sigma_tolerance if not math.isnan(sigma_tolerance) else 0.5
             ppfs = ppf_settings
             chs = ch_settings
             total_steps = steps
@@ -598,7 +601,7 @@ class PPFNKSamplerAdvanced:
             blend_type = noise_mode
             boost_sigma = (boost_leading_sigma == "true")
 
-            def pns_return_noise(seed, x, sigma, sigma_tol, boost_sigma, total_steps, method, freq, atten, blending_modes, blending_mode, ppfs, chs):
+            def pns_return_noise(seed, x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs):
                 seed = seed_base + noise_idx[0]
                 rand_noise = torch.randn_like(x)
                 
@@ -621,7 +624,7 @@ class PPFNKSamplerAdvanced:
 
                 if not ppfs and not chs:
                     power_law = PowerLawNoise(device=rand_noise.device)
-                    noise = power_law(1, width, height, noise_type=method, frequency=frequency, attenuation=attenuation, seed=seed)
+                    noise = power_law(1, width, height, noise_type=method, alpha=alpha_exp, scale=range_scale, modulator=modu, seed=seed).to(x.device)
                 elif ppfs:
                     power_fractal = PPFNoiseNode()
                     noise = power_fractal.power_fractal_latent(1, width, height, 'nearest', ppfs['X'], ppfs['Y'], ppfs['Z'], ppfs['evolution'], ppfs['frame'], ppfs['scale'], ppfs['octaves'], ppfs['persistence'], ppfs['lacunarity'], ppfs['exponent'], ppfs['brightness'], ppfs['contrast'], 0.0, 1.0, seed, device=('cuda' if torch.cuda.is_available() else 'cpu'), optional_vae=None)[0]['samples'].to(device=rand_noise.device)
@@ -646,7 +649,7 @@ class PPFNKSamplerAdvanced:
 
                 return blended_noise
 
-            return lambda sigma, sigma_next, **kwargs: pns_return_noise(seed_base + noise_idx[0], x, sigma, sigma_tol, boost_sigma, total_steps, method, freq, atten, blending_modes, blending_mode, ppfs, chs)
+            return lambda sigma, sigma_next, **kwargs: pns_return_noise(seed_base + noise_idx[0], x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs)
 
         # BROWNIAN NOISE SAMPLER HIJACK
 
@@ -654,10 +657,11 @@ class PPFNKSamplerAdvanced:
 
             seed_base = seed
             noise_idx = [0]
-            method = noise_type
-            freq = frequency
-            atten = attenuation
-            sigma_tol = sigma_tolerance
+            method = noise_type if noise_type in PowerLawNoise.get_noise_types() else PowerLawNoise.get_noise_types()[0]
+            alpha_exp = alpha_exponent if not math.isnan(alpha_exponent) else 1.0
+            range_scale = scale if not math.isnan(scale) else 1.0
+            modu = modulator if not math.isnan(modulator) else 1.0
+            sigma_tol = sigma_tolerance if not math.isnan(sigma_tolerance) else 0.5
             ppfs = ppf_settings
             chs = ch_settings
             total_steps = steps
@@ -713,7 +717,7 @@ class PPFNKSamplerAdvanced:
 
                 if not ppfs and not chs:
                     power_law = PowerLawNoise(device=tree.device)
-                    noise = power_law(1, self.width, self.height, noise_type=self.method, frequency=self.freq, attenuation=self.atten, seed=seed).to(device=tree.device)
+                    noise = power_law(1, self.width, self.height, noise_type=self.method, alpha=self.alpha_exp, scale=self.range_scale, modulator=self.modu, seed=seed).to(device=tree.device)
                 elif ppfs:
                     power_fractal = PPFNoiseNode()
                     noise = power_fractal.power_fractal_latent(1, self.width, self.height, 'nearest', ppfs['X'], ppfs['Y'], ppfs['Z'], ppfs['evolution'], ppfs['frame'], ppfs['scale'], ppfs['octaves'], ppfs['persistence'], ppfs['lacunarity'], ppfs['exponent'], ppfs['brightness'], ppfs['contrast'], 0.0, 1.0, seed, device=('cuda' if torch.cuda.is_available() else 'cpu'), optional_vae=None)[0]['samples'].to(device=tree.device)

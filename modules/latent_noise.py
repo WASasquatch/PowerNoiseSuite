@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.fft as fft
 import math
+import random
 
 from .latent_util import normalize
 from .latent_filters import blending_modes
@@ -467,40 +468,6 @@ class CrossHatchLinearPowerFractal(nn.Module):
 class PowerLawNoise(nn.Module):
     """
     Generate various types of power-law noise.
-
-    Args:
-        device (str, optional): The device to use for computation ('cpu' or 'cuda'). Default is 'cpu'.
-
-    Methods:
-        set_seed(seed):
-            Set the random seed for reproducibility.
-
-        white_noise(width, height, batch_size, seed):
-            Generate white noise.
-
-        grey_noise(width, height, attenuation, batch_size, seed):
-            Generate grey noise with optional attenuation.
-
-        blue_noise(width, height, frequency, attenuation, batch_size, seed):
-            Generate blue noise using the power spectrum method.
-
-        green_noise(width, height, frequency, attenuation, batch_size, seed):
-            Generate green noise using the power spectrum method.
-
-        pink_noise(width, height, frequency, attenuation, batch_size, seed):
-            Generate pink noise using the power spectrum method.
-
-        blue_noise_mask(width, height, frequency, attenuation, seed, num_masks=3, batch_size=1):
-            Generate multiple blue noise masks.
-
-        blend_noise(width, height, masks, noise_types, attenuations, batch_size, seed):
-            Blend different types of noise with masks.
-
-        mix_noise(width, height, frequency, attenuation, seed, batch_size):
-            Mix white, grey, and pink noise with blue noise masks.
-
-        forward(width, height, frequency=None, attenuation=1.0, noise_type="white", seed=None, batch_size=1):
-            Generate a noise image with options for type, frequency, and seed.
     """
     def __init__(self, device='cpu'):
         """
@@ -508,6 +475,7 @@ class PowerLawNoise(nn.Module):
 
         Args:
             device (str, optional): The device to use for computation ('cpu' or 'cuda'). Default is 'cpu'.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 2.0.
         """
         super(PowerLawNoise, self).__init__()
         self.device = device
@@ -520,7 +488,30 @@ class PowerLawNoise(nn.Module):
         Returns:
             (list): a list of noise types to use for noise_type parameter
         """
-        return ["white", "grey", "pink", "green", "blue", "mix"]
+        return ["white", "grey", "pink", "green", "blue", "random_mix", "brownian_fractal", "velvet", "violet"]
+
+    def get_generator(self, noise_type):
+        if noise_type in self.get_noise_types():
+            if noise_type == "white":
+                return self.white_noise
+            elif noise_type == "grey":
+                return self.grey_noise
+            elif noise_type == "pink":
+                return self.pink_noise
+            elif noise_type == "green":
+                return self.green_noise
+            elif noise_type == "blue":
+                return self.blue_noise
+            elif noise_type == "velvet":
+                return self.velvet_noise
+            elif noise_type == "violet":
+                return self.violet_noise
+            elif noise_type == "random_mix":
+                return self.mix_noise
+            elif noise_type == "brownian_fractal":
+                return self.brownian_fractal_noise
+        else:
+            raise ValueError(f"`noise_type` is invalid. Valid types are {', '.join(self.get_noise_types())}")
 
     def set_seed(self, seed):
         """
@@ -532,280 +523,361 @@ class PowerLawNoise(nn.Module):
         if seed is not None:
             torch.manual_seed(seed)
 
-    def white_noise(self, width, height, batch_size, seed, attenuation=1.0):
+    def white_noise(self, batch_size, width, height, scale, seed, alpha=0.0, **kwargs):
         """
-        Generate white noise.
+        Generate white noise with a power-law distribution.
 
         Args:
+            batch_size (int): Number of noise images to generate.
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            batch_size (int): Number of images to generate.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value.
-            attenuation (float, optional): Amplitude attenuation factor. Default is 1.0.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 0.0.
 
         Returns:
-            torch.Tensor: White noise image.
+            torch.Tensor: White power-law noise image.
         """
         self.set_seed(seed)
-        noise = torch.rand((batch_size, 1, height, width), device=self.device)
-        return noise.to(self.device) * attenuation
+        scale = scale
+        noise_real = torch.randn((batch_size, 1, height, width), device=self.device)
+        noise_power_law = torch.sign(noise_real) * torch.abs(noise_real) ** alpha
+        noise_power_law *= scale
+        return noise_power_law.to(self.device)
 
-    def grey_noise(self, width, height, attenuation, batch_size, seed, frequency=None):
+    def grey_noise(self, batch_size, width, height, scale, seed, alpha=1.0, **kwargs):
         """
-        Generate grey noise with optional attenuation.
+        Generate grey noise with a flat power spectrum and modulation.
 
         Args:
+            batch_size (int): Number of noise images to generate.
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            attenuation (float): Amplitude attenuation factor.
-            batch_size (int): Number of images to generate.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value.
-            frequency (float, optional): Frequency parameter for the noise. Default is None.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 1.0.
 
         Returns:
-            torch.Tensor: Grey noise image.
+            torch.Tensor: Grey noise image with modulation and a flat power spectrum.
         """
         self.set_seed(seed)
-        noise = torch.randn((batch_size, 1, height, width), device=self.device) * attenuation
-        if frequency:
-            t = torch.linspace(0, 1, width * height).view(1, 1, height, width).to(self.device)
-            modulation = torch.sin(2 * math.pi * frequency * t)
-            noise = noise * modulation
-        return noise.to(self.device)
+        scale = scale
+        noise_real = torch.randn((batch_size, 1, height, width), device=self.device)
+        modulation = torch.abs(noise_real) ** (alpha - 1)
+        noise_modulated = noise_real * modulation
+        noise_modulated *= scale
+        return noise_modulated.to(self.device)
 
-    def blue_noise(self, width, height, frequency, attenuation, batch_size, seed):
+    def blue_noise(self, batch_size, width, height, scale, seed, alpha=2.0, **kwargs):
         """
         Generate blue noise using the power spectrum method.
 
         Args:
+            batch_size (int): Number of noise images to generate.
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            frequency (int): Frequency of the blue noise.
-            attenuation (float): Amplitude attenuation factor.
-            batch_size (int): Number of images to generate.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 2.0.
 
         Returns:
-            torch.Tensor: Blue noise image.
+            torch.Tensor: Blue noise image with shape [batch_size, 1, height, width].
         """
         self.set_seed(seed)
-        noise = self.grey_noise(width, height, attenuation, batch_size, seed, frequency=frequency)
-        scale = 1.0 / (width * height)
-        fy = fft.fftfreq(height).unsqueeze(1)**2
-        fx = fft.fftfreq(width)**2
-        f = fy + fx
-        power = torch.sqrt(f)
+
+        noise = torch.randn(batch_size, 1, height, width, device=self.device)
+        
+        freq_x = fft.fftfreq(width, 1.0)
+        freq_y = fft.fftfreq(height, 1.0)
+        Fx, Fy = torch.meshgrid(freq_x, freq_y, indexing="ij")
+        
+        power = (Fx**2 + Fy**2)**(alpha / 2.0)
         power[0, 0] = 1.0
-        noise_real = fft.ifftn(fft.fftn(noise.to(self.device)) / power.to(self.device)).real
-        noise_real *= scale / noise_real.std()
+        power = power.unsqueeze(0).expand(batch_size, 1, width, height).permute(0, 1, 3, 2).to(device=self.device)
+        
+        noise_fft = fft.fftn(noise)
+        power = power.to(noise_fft)
+        noise_fft = noise_fft / torch.sqrt(power)
+        
+        noise_real = fft.ifftn(noise_fft).real
+        noise_real = noise_real - noise_real.min()
+        noise_real = noise_real / noise_real.max()
+        noise_real = noise_real * scale
+        
         return noise_real.to(self.device)
 
-    def green_noise(self, width, height, frequency, attenuation, batch_size, seed):
+    def green_noise(self, batch_size, width, height, scale, seed, alpha=1.5, **kwargs):
         """
         Generate green noise using the power spectrum method.
 
         Args:
+            batch_size (int): Number of noise images to generate.
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            frequency (int): Frequency of the green noise.
-            attenuation (float): Amplitude attenuation factor.
-            batch_size (int): Number of images to generate.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 1.5.
 
         Returns:
-            torch.Tensor: Green noise image.
+            torch.Tensor: Green noise image with shape [batch_size, 1, height, width].
         """
         self.set_seed(seed)
-        noise = self.grey_noise(width, height, attenuation, batch_size, seed, frequency=frequency)
-        scale = 1.0 / (width * height)
-        fy = fft.fftfreq(height).unsqueeze(1)**2
-        fx = fft.fftfreq(width)**2
-        f = fy + fx
-        power = torch.sqrt(f)
-        power[0, 0] = 1.0
-        noise_real = fft.ifftn(fft.fftn(noise.to(self.device)) / torch.sqrt(power.to(self.device))).real
-        noise_real *= scale / noise_real.std()
-        return noise_real.to(self.device)
 
-    def pink_noise(self, width, height, frequency, attenuation, batch_size, seed):
+        noise = torch.randn(batch_size, 1, height, width, device=self.device)
+        
+        freq_x = fft.fftfreq(width, 1.0)
+        freq_y = fft.fftfreq(height, 1.0)
+        Fx, Fy = torch.meshgrid(freq_x, freq_y, indexing="ij")
+        
+        power = (Fx**2 + Fy**2)**(alpha / 2.0)
+        power[0, 0] = 1.0
+        power = power.unsqueeze(0).expand(batch_size, 1, width, height).permute(0, 1, 3, 2).to(device=self.device)
+        
+        noise_fft = fft.fftn(noise)
+        power = power.to(noise_fft)
+        noise_fft = noise_fft / torch.sqrt(power)
+        
+        noise_real = fft.ifftn(noise_fft).real
+        noise_real = noise_real - noise_real.min()
+        noise_real = noise_real / noise_real.max()
+        noise_real = noise_real * scale
+        
+        return noise_real.to(self.device)
+        
+    def pink_noise(self, batch_size, width, height, scale, seed, alpha=1.0, **kwargs):
         """
         Generate pink noise using the power spectrum method.
 
         Args:
+            batch_size (int): Number of noise images to generate.
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            frequency (int): Frequency of the pink noise.
-            attenuation (float): Amplitude attenuation factor.
-            batch_size (int): Number of images to generate.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 1.0.
 
         Returns:
-            torch.Tensor: Pink noise image.
+            torch.Tensor: Pink noise image with shape [batch_size, 1, height, width].
         """
         self.set_seed(seed)
-        noise = self.grey_noise(width, height, attenuation, batch_size, seed, frequency=frequency)
-        scale = 1.0 / (width * height)
-        fy = fft.fftfreq(height).unsqueeze(1)**2
-        fx = fft.fftfreq(width)**2
-        f = fy + fx
-        power = torch.sqrt(f)
+
+        noise = torch.randn(batch_size, 1, height, width, device=self.device)
+        
+        freq_x = fft.fftfreq(width, 1.0)
+        freq_y = fft.fftfreq(height, 1.0)
+        Fx, Fy = torch.meshgrid(freq_x, freq_y, indexing="ij")
+        
+        power = (Fx**2 + Fy**2)**(alpha / 2.0)
         power[0, 0] = 1.0
-        noise_fft = fft.fftn(noise.to(self.device))
+        power = power.unsqueeze(0).expand(batch_size, 1, width, height).permute(0, 1, 3, 2).to(device=self.device)
+
+        noise_fft = fft.fftn(noise)
+        noise_fft = noise_fft / torch.sqrt(power.to(noise_fft.dtype))
+
+        noise_real = fft.ifftn(noise_fft).real
+        noise_real = noise_real - noise_real.min()
+        noise_real = noise_real / noise_real.max()
+        noise_real = noise_real * scale
+        
+        return noise_real.to(self.device)
+    
+    def velvet_noise(self, batch_size, width, height, alpha=1.0, device='cpu', **kwargs):
+        """
+        Generate true Velvet noise with specified width and height using PyTorch.
+
+        Args:
+            batch_size (int): Number of noise images to generate.
+            width (int): Width of the noise image.
+            height (int): Height of the noise image.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 1.0.
+            device (str): Device to run on ('cpu' or 'cuda').
+
+        Returns:
+            torch.Tensor: Velvet noise image.
+        """
+        white_noise = torch.randn((batch_size, 1, height, width), device=device)
+        velvet_noise = torch.sign(white_noise) * torch.abs(white_noise) ** (1 / alpha)
+        velvet_noise /= torch.max(torch.abs(velvet_noise))
+        
+        return velvet_noise
+
+    def violet_noise(self, batch_size, width, height, alpha=1.0, device='cpu', **kwargs):
+        """
+        Generate true Violet noise with specified width and height using PyTorch.
+
+        Args:
+            batch_size (int): Number of noise images to generate.
+            width (int): Width of the noise image.
+            height (int): Height of the noise image.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 1.0.
+            device (str): Device to run on ('cpu' or 'cuda').
+
+        Returns:
+            torch.Tensor: Violet noise image.
+        """
+        white_noise = torch.randn((batch_size, 1, height, width), device=device)
+        violet_noise = torch.sign(white_noise) * torch.abs(white_noise) ** (alpha / 2.0)
+        violet_noise /= torch.max(torch.abs(violet_noise))
+        
+        return violet_noise
+
+    def brownian_fractal_noise(self, batch_size, width, height, scale, seed, alpha=1.0, modulator=1.0, **kwargs):
+        """
+        Generate Brownian fractal noise using the power spectrum method.
+
+        Args:
+            batch_size (int): Number of noise images to generate.
+            width (int): Width of the noise image.
+            height (int): Height of the noise image.
+            scale (float): Noise pattern size control (higher values result in smaller patterns).
+            seed (int): The random seed value.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 1.0.
+            modulator (float, optional): Modulate the number of iterations for brownian tree growth. Default is 10000.
+
+        Returns:
+            torch.Tensor: Brownian Tree noise image with shape (batch_size, 1, height, width).
+        """
+        def add_particles_to_grid(grid, particle_x, particle_y):
+            for x, y in zip(particle_x, particle_y):
+                grid[y, x] = 1
+
+        def move_particles(particle_x, particle_y):
+            dx = torch.randint(-1, 2, (batch_size, n_particles), device=self.device)
+            dy = torch.randint(-1, 2, (batch_size, n_particles), device=self.device)
+            particle_x = torch.clamp(particle_x + dx, 0, width - 1)
+            particle_y = torch.clamp(particle_y + dy, 0, height - 1)
+            return particle_x, particle_y
+
+        self.set_seed(seed)
+        n_iterations = int(5000 * modulator)
+        fy = fft.fftfreq(height).unsqueeze(1) ** 2
+        fx = fft.fftfreq(width) ** 2
+        f = fy + fx
+        power = torch.sqrt(f) ** alpha
+        power[0, 0] = 1.0
+
+        grid = torch.zeros(height, width, dtype=torch.uint8, device=self.device)
+
+        n_particles = n_iterations // 10 
+        particle_x = torch.randint(0, int(width), (batch_size, n_particles), device=self.device)
+        particle_y = torch.randint(0, int(height), (batch_size, n_particles), device=self.device)
+
+        neighborhood = torch.tensor([[1, 1, 1],
+                                    [1, 0, 1],
+                                    [1, 1, 1]], dtype=torch.uint8, device=self.device)
+
+        for _ in range(n_iterations):
+            add_particles_to_grid(grid, particle_x, particle_y)
+            particle_x, particle_y = move_particles(particle_x, particle_y)
+
+        brownian_tree = grid.clone().detach().float().to(self.device)
+        brownian_tree = brownian_tree / brownian_tree.max()
+        brownian_tree = F.interpolate(brownian_tree.unsqueeze(0).unsqueeze(0), size=(height, width), mode='bilinear', align_corners=False)
+        brownian_tree = brownian_tree.squeeze(0).squeeze(0)
+
+        fy = fft.fftfreq(height).unsqueeze(1) ** 2
+        fx = fft.fftfreq(width) ** 2
+        f = fy + fx
+        power = torch.sqrt(f) ** alpha
+        power[0, 0] = 1.0
+
+        noise_real = brownian_tree * scale
+
+        amplitude = 1.0 / (scale ** (alpha / 2.0))
+        noise_real *= amplitude
+
+        noise_fft = fft.fftn(noise_real.to(self.device))
         noise_fft = noise_fft / power.to(self.device)
         noise_real = fft.ifftn(noise_fft).real
-        noise_real *= scale / noise_real.std()
-        return noise_real.to(self.device)
+        noise_real *= scale
 
+        return noise_real.unsqueeze(0).unsqueeze(0)
 
-    def blue_noise_mask(self, width, height, frequency, attenuation, seed, num_masks=3, batch_size=1):
+    def noise_masks(self, batch_size, width, height, scale, seed, num_masks=3, alpha=2.0):
         """
-        Generate multiple blue noise masks.
+        Generate a fixed number of random masks.
 
         Args:
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            frequency (int): Frequency of the blue noise.
-            attenuation (float): Amplitude attenuation factor.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value for mask generation.
             num_masks (int, optional): Number of masks to generate. Default is 3.
             batch_size (int, optional): Number of masks per batch. Default is 1.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 2.0.
 
         Returns:
             List[torch.Tensor]: List of blue noise masks.
         """
         masks = []
         for i in range(num_masks):
-            mask_seed = seed + i
-            mask = normalize(self.blue_noise(width, height, frequency, attenuation, batch_size, mask_seed))
+            mask_seed = seed + (i * 100)
+            random.seed(mask_seed)
+            noise_type = random.choice(self.get_noise_types())
+            mask = self.get_generator(noise_type)(batch_size, width, height, scale=scale, seed=mask_seed, alpha=alpha)
             masks.append(mask)
         return masks
 
-    def blend_noise(self, width, height, masks, noise_types, attenuations, batch_size, seed):
-        """
-        Blend different types of noise with masks.
-
-        Args:
-            width (int): Width of the noise image.
-            height (int): Height of the noise image.
-            masks (List[torch.Tensor]): List of noise masks.
-            noise_types (List[str]): List of noise types to blend.
-            attenuations (List[float]): List of attenuations for each noise type.
-            batch_size (int): Number of images to generate.
-            seed (int): The random seed value.
-
-        Returns:
-            torch.Tensor: Blended noise image.
-        """
-        blended_image = torch.zeros(batch_size, 1, height, width, device=self.device)
-        for mask, noise_type, attenuation in zip(masks, noise_types, attenuations):
-            mask = normalize(mask)
-            if noise_type == "white":
-                noise = self.white_noise(width, height, batch_size, seed, attenuation) 
-            elif noise_type == "grey":
-                noise = self.grey_noise(width, height, attenuation, batch_size, seed, frequency)
-            elif noise_type == "pink":
-                noise = self.pink_noise(width, height, frequency, attenuation, batch_size, seed)
-            elif noise_type == "green":
-                noise = self.green_noise(width, height, frequency, attenuation, batch_size, seed)
-            elif noise_type == "blue":
-                noise = self.blue_noise(width, height, frequency, attenuation, batch_size, seed)
-
-            # Normalize the noise before blending
-            noise = normalize(noise)
-
-            blended_image = blended_image + noise * mask
-
-        return blended_image
-
-    def mix_noise(self, width, height, frequency, attenuation, seed, batch_size):
+    def mix_noise(self, batch_size, width, height, scale, seed, alpha=2.0, **kwargs):
         """
         Mix white, grey, and pink noise with blue noise masks.
 
         Args:
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            frequency (int): Frequency of the blue noise.
-            attenuation (float): Amplitude attenuation factor.
+            scale (float): Amplitude scale factor.
             seed (int): The random seed value.
             batch_size (int): Number of images to generate.
+            alpha (float, optional): The exponent of the power-law distribution. Default is 2.0.
 
         Returns:
             torch.Tensor: Mixed noise image.
         """
-        blue_noise_masks = self.blue_noise_mask(width, height, frequency, attenuation, seed=seed, num_masks=3, batch_size=batch_size)
-        noise_types = ["white", "grey", "pink"]
-        attenuations = [attenuation] * len(noise_types)
-
-        noise_components = []
-        for noise_type, att in zip(noise_types, attenuations):
-            if noise_type == "white":
-                noise = normalize(self.white_noise(width, height, batch_size, seed, attenuation))
-            elif noise_type == "grey":
-                noise = normalize(self.grey_noise(width, height, att, batch_size, seed, frequency))
-            elif noise_type == "pink":
-                noise = normalize(self.pink_noise(width, height, frequency, att, batch_size, seed))
-            noise_components.append(noise)
-            seed += 1
+        noise_types = [random.choice(self.get_noise_types()) for _ in range(3)]
+        scales = [scale] * 3
+        noise_alpha = random.uniform(0.5, 2.0)
+        print("Random Alpha:", noise_alpha)
 
         mixed_noise = torch.zeros(batch_size, 1, height, width, device=self.device)
-        for mask, noise in zip(blue_noise_masks, noise_components):
-            mixed_noise += mask * noise
+        
+        for noise_type in noise_types:
+            noise_seed = seed + random.randint(0, 1000)
+            noise = self.get_generator(noise_type)(batch_size, width, height, seed=noise_seed, scale=scale, alpha=noise_alpha).to(self.device)
+            mixed_noise += noise
 
-        return normalize(mixed_noise)
+        return mixed_noise
 
-    def forward(self, batch_size, width, height, frequency=11.6, attenuation=1.0, noise_type="white", seed=None):
+    def forward(self, batch_size, width, height, alpha=2.0, scale=1.0, modulator=1.0, noise_type="white", seed=None):
         """
         Generate a noise image with options for type, frequency, and seed.
 
         Args:
+            batch_size (int): Number of noise images to generate.
             width (int): Width of the noise image.
             height (int): Height of the noise image.
-            frequency (int, optional): Frequency parameter for certain noise types. Default is None.
-            attenuation (float): Amplitude attenuation factor for the noise. Default is 1.0.
+            scale (float): Amplitude scale factor for the noise. Default is 1.0.
+            modulator (float, optional): Modulate the noise. Currently only available for brownian_fractal. Default is 10000.
             noise_type (str): Type of noise to generate ('white', 'grey', 'pink', 'green', 'blue', 'mix').
             seed (int, optional): The random seed value. Default is None.
-            batch_size (int): Number of noise images to generate.
 
         Returns:
             torch.Tensor: Generated noise image.
         """
+
+        if noise_type not in self.get_noise_types():
+            raise ValueError(f"`noise_type` is invalid. Valid types are {', '.join(self.get_noise_types())}")
+
         if seed is None:
-            seed = torch.randint(0, 999999, (1,)).item()
+            seed = torch.randint(0, 2**32 - 1, (1,)).item()
         
-        red_channel = torch.zeros(batch_size, 1, height, width, device=self.device)
-        green_channel = torch.zeros(batch_size, 1, height, width, device=self.device)
-        blue_channel = torch.zeros(batch_size, 1, height, width, device=self.device)
-
+        channels = []
         for i in range(3):
-            if noise_type == "white":
-                noise = normalize(self.white_noise(width, height, batch_size, seed, attenuation))
-            elif noise_type == "grey":
-                noise = normalize(self.grey_noise(width, height, attenuation, batch_size, seed, frequency))
-            elif noise_type == "pink":
-                noise = normalize(self.pink_noise(width, height, frequency, attenuation, batch_size, seed))
-            elif noise_type == "green":
-                noise = normalize(self.green_noise(width, height, frequency, attenuation, batch_size, seed))
-            elif noise_type == "blue":
-                noise = normalize(self.blue_noise(width, height, frequency, attenuation, batch_size, seed))
-            elif noise_type == "mix":
-                if frequency is None or seed is None:
-                    raise AttributeError("Mix noise requires both frequency and seed values.")
-                noise = normalize(self.mix_noise(width, height, frequency, attenuation, seed, batch_size))
-            else:
-                raise AttributeError(f"Unsupported noise type `{noise_type}`")
+            gen_seed = seed + i
+            random.seed(gen_seed)
+            noise = normalize(self.get_generator(noise_type)(batch_size, width, height, scale=scale, seed=gen_seed, alpha=alpha, modulator=modulator))
+            channels.append(noise)
 
-            normalized_noise = normalize(noise)
-            if i == 0:
-                red_channel = normalized_noise
-            elif i == 1:
-                green_channel = normalized_noise
-            elif i == 2:
-                blue_channel = normalized_noise
-
-            seed += 1
-            torch.manual_seed(seed)
-
-        noise_image = torch.cat((red_channel, green_channel, blue_channel), dim=1)
+        noise_image = torch.cat((channels[0], channels[1], channels[2]), dim=1)
         noise_image = (noise_image - noise_image.min()) / (noise_image.max() - noise_image.min())
         noise_image = noise_image.permute(0, 2, 3, 1).float()
 
