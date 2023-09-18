@@ -786,6 +786,8 @@ class PPFNKSamplerAdvanced:
         if enable_denoise == "true":
             start_at_step = None
             end_at_step = None
+        else:
+            denoise = 1.0
 
         force_full_denoise = True
         if return_with_leftover_noise == "enable":
