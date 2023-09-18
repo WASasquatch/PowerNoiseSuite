@@ -446,23 +446,32 @@ The `PPFNKSamplerAdvanced` class is part of the Power Noise Suite and provides a
 - `end_at_step` (INT): Sampling ending step.
     - Default: 10,000
     - Range: 0 to 10,000
+- `enable_denoise` ["false", "true"]
+    -  Whether to enable the use of the denoise value rather then `start_at_step` and `end_at_step`. If enabled, `start_at_step` and `end_at_step` will be set to `None`.
 - `return_with_leftover_noise` (["disable", "enable"]): Specifies whether to return the latent image with left of noise *(only really helpful for feeding another KSampler advanced)*
-
+- `denoise` (FLOAT): The denoising value for img2img inference.
+    - Default: 1.0
+    - Range: 0 to 1.0
+    - Step: 0.01
 ### Optional Inputs
 
-- `noise_type`: ["white", "grey", "pink", "green", "blue", "mix", "vanilla_comfy"]: 
+- `noise_type`: ["white", "grey", "pink", "green", "blue", "random_mix", "brownian", "velvet", "violet", "vanilla_comfy"]: 
   - The type of [power-law noise](https://en.wikipedia.org/wiki/Colors_of_noise#Technical_definitions) to generate.
 - `noise_blending`: ["bislerp", "cosine interp", "cuberp", "hslerp", "lerp", "add", "inject"]
   - The noise blending method used during sampling
 - `noise_mode`: ["additive", "subtractive"]
   - The noise operation used on the Power noise added to base noise.
-- `frequency` (FLOAT): The frequency of the noise range.
-    - Default: 3.141592653589793
-    - Range: 0.001 to 1024.0
+- `scale` (FLOAT): The scale of the noise range.
+    - Default: 1.0
+    - Range: 0.001 to [sys.maxsize-1]
     - Step: 0.001
-- `attenuation` (FLOAT): The attenuation of the noise.
-    - Default: 0.75
-    - Range: 0.001 to 1024.0
+- `alpha_exponent` (FLOAT): The noise alpha exponent for Power-Law Noise. Higher it is, the softer noise will be.
+    - Default: 1.0
+    - Range: 0.001 to 12.0
+    - Step: 0.001
+- `modulator` (FLOAT): Modulator used for Brownian noise. Changes noise density.
+    - Default: 1.0
+    - Range: 0.001 to 12.0
     - Step: 0.001
 - `sigma_tolerance` (FLOAT): The sigma tolerance controls how the amplitude of sigma to apply noise with. 
     - Default: 0.5
@@ -470,6 +479,9 @@ The `PPFNKSamplerAdvanced` class is part of the Power Noise Suite and provides a
     - Step: 0.001
 - `ppf_settings` (PPF_SETTINGS): Settings for power fractal noise. If plugged, Power-Law, and Cross-Hatch noise will be disabled.
 - `ch_settings` (CH_SETTINGS): Settings for cross-hatch noise. If plugged, Power-Law noise will be disabled. `ppf_setttings` will bypass this input.
+- `tonal_guide_latent` (CH_SETTINGS): An optional latent image used to potentially help guide the colors and sometimes influences composition. 
+- `guide_use_noise` ["true", "false"]
+ - Whether to use Power-Law noise with latent guide. 
 
 ### Returns
 
