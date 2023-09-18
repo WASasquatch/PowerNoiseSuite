@@ -9,7 +9,15 @@ Power Noise Suite contains nodes centered around latent noise input, and diffusi
  - Power-Law Noise overhauled. Total revamp of the noise system was necessary for more accurate noise representation.
  - Tonal Guide Image. The Power KSampler now has a tonal guide image which can be used to help tone a generation similar to a input image. Not always reliable, but in some instances can theme the generation very much like the input image. 
 
+
+
+
+[<img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/b4a952f1-b040-4e5c-811c-b15b323d7426" width="400">](https://raw.githubusercontent.com/WASasquatch/ComfyUI_Workflows/main/Img2Img-Variations__TonalGuide.json)
 <img src="https://github.com/WASasquatch/PowerNoiseSuite/assets/1151589/23bb0f9b-4f63-41ea-961d-ac19e554feef" width="400">
+
+## Workflows
+ - [Img2Img Variations with Tonal Guide](https://raw.githubusercontent.com/WASasquatch/ComfyUI_Workflows/main/Img2Img-Variations__TonalGuide.json)
+
 
 ---
 
