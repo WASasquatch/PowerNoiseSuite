@@ -558,6 +558,8 @@ class PPFNKSamplerAdvanced:
                 "latent_image": ("LATENT",),
                 "start_at_step": ("INT", {"default": 0, "min": 0, "max": 10000}),
                 "end_at_step": ("INT", {"default": 10000, "min": 0, "max": 10000}),
+                "enable_denoise": (["false", "true"],),
+                "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "add_noise": (["enable", "disable"],),
                 "return_with_leftover_noise": (["disable", "enable"],),
             },
@@ -570,8 +572,10 @@ class PPFNKSamplerAdvanced:
                 "modulator": ("FLOAT", {"default": 1.0, "max": 2.0, "min": 0.1, "step": 0.01}),
                 "sigma_tolerance": ("FLOAT", {"default": 0.5, "max": 1.0, "min": 0.0, "step": 0.001}),
                 "boost_leading_sigma": (["false", "true"],),
+                "tonal_guide_latent": ("LATENT",),
                 "ppf_settings": ("PPF_SETTINGS",),
                 "ch_settings": ("CH_SETTINGS",),
+                "guide_use_noise": (["true", "false"],),
             }
         }
 
@@ -580,7 +584,7 @@ class PPFNKSamplerAdvanced:
 
     CATEGORY = "Power Noise Suite/Sampling"
 
-    def sample(self, model, add_noise, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, start_at_step, end_at_step, return_with_leftover_noise, denoise=1.0, noise_type='grey', noise_blending="bislerp", noise_mode="additive", scale=1.0, alpha_exponent=1.0, modulator=1.0, sigma_tolerance=1.0, boost_leading_sigma="false", ppf_settings=None, ch_settings=None):
+    def sample(self, model, add_noise, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, start_at_step, end_at_step, enable_denoise, denoise, return_with_leftover_noise, noise_type='grey', noise_blending="bislerp", noise_mode="additive", scale=1.0, alpha_exponent=1.0, modulator=1.0, sigma_tolerance=1.0, boost_leading_sigma="false", ppf_settings=None, ch_settings=None, tonal_guide_latent=None, guide_use_noise="true"):
         
         # WHITE-NOISE SAMPLER HIJACK
         
@@ -600,8 +604,10 @@ class PPFNKSamplerAdvanced:
             blending_mode = noise_blending
             blend_type = noise_mode
             boost_sigma = (boost_leading_sigma == "true")
+            guide = tonal_guide_latent['samples']
+            guide_noise = (guide_use_noise == "true")
 
-            def pns_return_noise(seed, x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs):
+            def pns_return_noise(seed, x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs, guide, guide_noise):
                 seed = seed_base + noise_idx[0]
                 rand_noise = torch.randn_like(x)
                 
@@ -639,17 +645,32 @@ class PPFNKSamplerAdvanced:
                 if not ppfs and not chs:
                     alpha = torch.ones((1, x.shape[2], x.shape[3], 1), dtype=x.dtype, device=x.device).permute(0, 3, 1, 2)
                     noise = torch.cat((noise, alpha), dim=1)
-
-                if blend_type == "additive":
-                    blended_noise = rand_noise + 0.25 * (blending_modes[blending_mode](rand_noise.to(device=rand_noise.device), noise.to(device=rand_noise.device), scaled_sigma) - rand_noise)
+                    
+                if not isinstance(guide, torch.Tensor):
+                    if blend_type == "additive":
+                        blended_noise = rand_noise + 0.25 * (blending_modes[blending_mode](rand_noise.to(device=rand_noise.device), noise.to(device=rand_noise.device), scaled_sigma) - rand_noise)
+                    else:
+                        blended_noise = rand_noise - 0.25 * (blending_modes[blending_mode](rand_noise.to(device=rand_noise.device), noise.to(device=rand_noise.device), scaled_sigma) - rand_noise)
                 else:
-                    blended_noise = rand_noise - 0.25 * (blending_modes[blending_mode](rand_noise.to(device=rand_noise.device), noise.to(device=rand_noise.device), scaled_sigma) - rand_noise)
+                    guide = guide.to(x.device)
+                    if guide.shape[2] != x.shape[2] or guide.shape[3] != x.shape[3]:
+                        guide = F.interpolate(guide, size=(x.shape[2], x.shape[3]), mode='nearest')
+                    if guide_noise:
+                        noise_blend_ratio = max(scaled_sigma, 1.0) / 2
+                        latent_blend_ratio = max(scaled_sigma * 1.5, 1.0)
+                        x = blending_modes["inject"](guide.to(x.device), x, latent_blend_ratio)
+                        noise = blending_modes["inject"](guide.to(x.device), noise, noise_blend_ratio)
+                    else:
+                        latent_blend_ratio = max(scaled_sigma * 1.5, 1.0)
+                        x = blending_modes["colorize"](guide.to(x.device), x, latent_blend_ratio)
+                        noise = guide
+                    blended_noise = blending_modes["colorize"](blending_modes[blending_mode](rand_noise, noise, scaled_sigma/32), guide, scaled_sigma/128)
                     
                 noise_idx[0] += 1
 
                 return blended_noise
 
-            return lambda sigma, sigma_next, **kwargs: pns_return_noise(seed_base + noise_idx[0], x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs)
+            return lambda sigma, sigma_next, **kwargs: pns_return_noise(seed_base + noise_idx[0], x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs, guide, guide_noise)
 
         # BROWNIAN NOISE SAMPLER HIJACK
 
@@ -668,6 +689,8 @@ class PPFNKSamplerAdvanced:
             blending_mode = noise_blending
             blend_type = noise_mode
             boost_sigma = (boost_leading_sigma == "true")
+            guide = tonal_guide_latent['samples']
+            guide_noise = (guide_use_noise == "true")
 
             def __init__(self, x, sigma_min, sigma_max, seed=None, transform=lambda x: x, cpu=False):         
                 self.noise_idx = [0]
@@ -735,10 +758,23 @@ class PPFNKSamplerAdvanced:
                     alpha = torch.ones((1, x.shape[2], x.shape[3], 1), dtype=x.dtype, device=x.device).permute(0, 3, 1, 2)
                     noise = torch.cat((noise, alpha), dim=1)
 
-                if self.blend_type == "additive":
-                    blended_noise = tree + 0.025 * (blending_modes[self.blending_mode](tree.to(device=tree.device), sharpen_latents(noise.to(device=tree.device), 0.5), scaled_sigma) - tree)
+                if not isinstance(self.guide, torch.Tensor):
+                    if self.blend_type == "additive":
+                        blended_noise = tree + 0.03 * (blending_modes[self.blending_mode](tree, sharpen_latents(noise.to(device=tree.device), 0.5), scaled_sigma) - tree)
+                    else:
+                        blended_noise = tree - 0.03 * (blending_modes[self.blending_mode](tree, sharpen_latents(noise.to(device=tree.device), 0.5), scaled_sigma) - tree)
                 else:
-                    blended_noise = tree - 0.025 * (blending_modes[self.blending_mode](tree.to(device=tree.device), sharpen_latents(noise.to(device=tree.device), ), scaled_sigma) - tree)
+                    guide = self.guide.to(x.device)
+                    if self.guide.shape[2] != x.shape[2] or self.guide.shape[3] != x.shape[3]:
+                        guide = F.interpolate(self.guide.to(x.device), size=(x.shape[2], x.shape[3]), mode='nearest')
+                    if self.guide_noise:
+                        noise_blend_ratio = max(scaled_sigma, 1.0) / 2
+                        noise = blending_modes["inject"](guide, noise, noise_blend_ratio)
+                    else:
+                        latent_blend_ratio = max(scaled_sigma * 1.5, 1.0)
+                        x = blending_modes["colorize"](guide, x, latent_blend_ratio)
+                        noise = guide
+                    blended_noise = blending_modes["colorize"](blending_modes[self.blending_mode](tree, noise, scaled_sigma/64), guide, scaled_sigma/128)
 
                 self.noise_idx[0] += 1
 
@@ -746,6 +782,10 @@ class PPFNKSamplerAdvanced:
 
         dns = None
         btns = None
+        
+        if enable_denoise == "true":
+            start_at_step = None
+            end_at_step = None
 
         force_full_denoise = True
         if return_with_leftover_noise == "enable":
@@ -756,7 +796,7 @@ class PPFNKSamplerAdvanced:
             disable_noise = True
         else:
             if noise_type != "vanilla_comfy":
-                print("Running with PNS Noise Samplers")
+                print("Running with 🦚 PNS Noise Samplers")
                 dns = comfy.k_diffusion.sampling.default_noise_sampler
                 btns = comfy.k_diffusion.sampling.BrownianTreeNoiseSampler
                 comfy.k_diffusion.sampling.default_noise_sampler = pns_noise_sampler

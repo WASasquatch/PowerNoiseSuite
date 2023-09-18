@@ -144,6 +144,9 @@ blending_modes = {
 
     # Simulates a brightening effect by dividing a by (1 - b) with a small epsilon to avoid division by zero.
     'color dodge': lambda a, b, t: a / (1 - b + 1e-6),
+    
+    # Transfer the color from `b` to `a` by t` factor
+    'colorize': lambda a, b, t: a + (b - a) * t,
 
     # Interpolates between tensors a and b using cosine interpolation.
     'cosine interp': lambda a, b, t: (a + b - (a - b) * torch.cos(t * torch.tensor(math.pi))) / 2,
