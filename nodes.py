@@ -604,7 +604,7 @@ class PPFNKSamplerAdvanced:
             blending_mode = noise_blending
             blend_type = noise_mode
             boost_sigma = (boost_leading_sigma == "true")
-            guide = tonal_guide_latent['samples']
+            guide = tonal_guide_latent['samples'] if isinstance(tonal_guide_latent, dict) else None
             guide_noise = (guide_use_noise == "true")
 
             def pns_return_noise(seed, x, sigma, sigma_tol, boost_sigma, total_steps, method, alpha_exp, range_scale, modu, blending_modes, blending_mode, ppfs, chs, guide, guide_noise):
@@ -689,7 +689,7 @@ class PPFNKSamplerAdvanced:
             blending_mode = noise_blending
             blend_type = noise_mode
             boost_sigma = (boost_leading_sigma == "true")
-            guide = tonal_guide_latent['samples']
+            guide = tonal_guide_latent['samples'] if isinstance(tonal_guide_latent, dict) else None
             guide_noise = (guide_use_noise == "true")
 
             def __init__(self, x, sigma_min, sigma_max, seed=None, transform=lambda x: x, cpu=False):         
