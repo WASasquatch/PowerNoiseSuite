@@ -27,16 +27,16 @@ Power Noise Suite contains nodes centered around latent noise input, and diffusi
 ---
 
 # Nodage Menu
- - [Perlin Power Fractal Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-noise-parameters)
- - [Power Law Noise](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-law-noise-parameters)
- - [Cross-Hatch Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-parameters)
- - [Cross-Hatch Linear Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-linear-power-fractal-parameters)
- - [Blend Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#blend-latents-parameters)
- - [Image as Latents](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#images-as-latents-parameters)
- - [Latent Adjustment](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#latent-adjustment-parameters)
- - [Power KSampler Advanced](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#power-ksampler-advanced-parameters)
-   - [Perlin Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#perlin-power-fractal-settings-parameters)
-   - [Cross-Hatch Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/blob/main/README.md#cross-hatch-power-fractal-settings-parameters)
+ - [Perlin Power Fractal Noise](https://github.com/WASasquatch/PowerNoiseSuite/#perlin-power-fractal-noise-parameters)
+ - [Power Law Noise](https://github.com/WASasquatch/PowerNoiseSuite/#power-law-noise-parameters)
+ - [Cross-Hatch Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/#cross-hatch-power-fractal-parameters)
+ - [Cross-Hatch Linear Power Fractal](https://github.com/WASasquatch/PowerNoiseSuite/#cross-hatch-linear-power-fractal-parameters)
+ - [Blend Latents](https://github.com/WASasquatch/PowerNoiseSuite/#blend-latents-parameters)
+ - [Image as Latents](https://github.com/WASasquatch/PowerNoiseSuite/#images-as-latents-parameters)
+ - [Latent Adjustment](https://github.com/WASasquatch/PowerNoiseSuite/#latent-adjustment-parameters)
+ - [Power KSampler Advanced](https://github.com/WASasquatch/PowerNoiseSuite/#power-ksampler-advanced-parameters)
+   - [Perlin Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/#perlin-power-fractal-settings-parameters)
+   - [Cross-Hatch Power Fractal Settings](https://github.com/WASasquatch/PowerNoiseSuite/#cross-hatch-power-fractal-settings-parameters)
 
 
 ---
