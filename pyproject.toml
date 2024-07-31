@@ -2,7 +2,7 @@
 name = "powernoisesuite"
 description = "Power Noise Suite contains nodes centered around latent noise input, and diffusion, as well as latent adjustments."
 version = "1.0.0"
-license = "LICENSE"
+license = { file = "LICENSE" }
 dependencies = ["torch"]
 
 [project.urls]
